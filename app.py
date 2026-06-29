@@ -1,43 +1,78 @@
 import streamlit as st
-import random
+import re
 
-st.set_page_config(page_title="Duck Shot", page_icon="🦆")
+st.set_page_config(
+    page_title="Human Behavior Analyzer",
+    page_icon="🧠",
+    layout="wide"
+)
 
-if "score" not in st.session_state:
-    st.session_state.score = 0
-if "misses" not in st.session_state:
-    st.session_state.misses = 0
-if "duck" not in st.session_state:
-    st.session_state.duck = random.randint(0, 8)
+st.title("🧠 Human Behavior Analyzer")
+st.caption("Analyze stories, conversations and situations")
 
-st.title("🦆 Duck Shot")
-st.write("Click the duck. Avoid the empty spots.")
+story = st.text_area(
+    "Describe a situation",
+    height=200,
+    placeholder="Tell me what happened..."
+)
 
-col1, col2 = st.columns(2)
-col1.metric("Score", st.session_state.score)
-col2.metric("Misses", st.session_state.misses)
+if st.button("Analyze"):
+    if not story.strip():
+        st.warning("Please enter some text.")
+        st.stop()
 
-if st.session_state.misses >= 5:
-    st.error("Game Over!")
-    if st.button("Restart"):
-        st.session_state.score = 0
-        st.session_state.misses = 0
-        st.session_state.duck = random.randint(0, 8)
-        st.rerun()
-    st.stop()
+    words = len(story.split())
 
-cell = 0
-for _ in range(3):
-    cols = st.columns(3)
-    for col in cols:
-        with col:
-            if cell == st.session_state.duck:
-                if st.button("🦆", key=cell, use_container_width=True):
-                    st.session_state.score += 1
-                    st.session_state.duck = random.randint(0, 8)
-                    st.rerun()
-            else:
-                if st.button("🌫️", key=cell, use_container_width=True):
-                    st.session_state.misses += 1
-                    st.rerun()
-        cell += 1
+    trust_score = 90
+
+    suspicious_words = [
+        "but",
+        "however",
+        "later",
+        "suddenly",
+        "lied",
+        "excuse",
+        "fake"
+    ]
+
+    findings = []
+
+    for word in suspicious_words:
+        if word.lower() in story.lower():
+            trust_score -= 8
+            findings.append(
+                f"Possible contradiction indicator: '{word}'"
+            )
+
+    trust_score = max(0, min(100, trust_score))
+
+    if trust_score > 75:
+        verdict = "Likely Consistent"
+    elif trust_score > 50:
+        verdict = "Needs More Context"
+    else:
+        verdict = "Potential Inconsistencies"
+
+    st.metric("Trust Score", f"{trust_score}%")
+
+    st.subheader("Verdict")
+    st.success(verdict)
+
+    st.subheader("Observations")
+
+    if findings:
+        for item in findings:
+            st.write("•", item)
+    else:
+        st.write("No obvious contradiction patterns detected.")
+
+    st.subheader("Text Statistics")
+
+    st.write(f"Word Count: {words}")
+
+    st.subheader("AI Recommendation")
+
+    st.info(
+        "Avoid jumping to conclusions. "
+        "Gather more information before judging intentions."
+    )
