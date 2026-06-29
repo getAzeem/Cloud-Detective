@@ -5,4 +5,6 @@ gunicorn
 dash
 plotly
 pandas
-
+flask
+pyyaml
+gunicorn
