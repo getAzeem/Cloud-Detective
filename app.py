@@ -1,100 +1,100 @@
-from flask import Flask, request, render_template_string
-import re
+from dash import Dash, html, dcc, Input, Output, State
+import base64
+import io
+import pandas as pd
 
-app = Flask(__name__)
+app = Dash(__name__)
+server = app.server
 
-HTML = """
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Password Checker</title>
-    <style>
-        body {
-            font-family: Arial;
-            background: #0f172a;
-            color: white;
-            text-align: center;
-            padding: 60px;
-        }
-        .box {
-            background: #111827;
-            max-width: 500px;
-            margin: auto;
-            padding: 30px;
-            border-radius: 16px;
-        }
-        input {
-            width: 90%;
-            padding: 14px;
-            border-radius: 8px;
-            border: none;
-            margin: 15px;
-        }
-        button {
-            padding: 12px 22px;
-            border: none;
-            border-radius: 8px;
-            font-weight: bold;
-            cursor: pointer;
-        }
-        .result {
-            margin-top: 20px;
-            font-size: 22px;
-            font-weight: bold;
-        }
-    </style>
-</head>
-<body>
-    <div class="box">
-        <h1>🔐 Password Strength Checker</h1>
-        <p>Check how strong your password is.</p>
+app.layout = html.Div(
+    style={
+        "fontFamily": "Arial",
+        "background": "#0f172a",
+        "color": "white",
+        "minHeight": "100vh",
+        "padding": "40px",
+    },
+    children=[
+        html.H1("📦 File Pipeline Builder"),
+        html.P("Drag and drop a CSV file to simulate a simple data pipeline."),
 
-        <form method="POST">
-            <input type="password" name="password" placeholder="Enter password">
-            <br>
-            <button type="submit">Check Strength</button>
-        </form>
+        dcc.Upload(
+            id="upload",
+            children=html.Div(["Drag and drop file here, or click to upload"]),
+            style={
+                "width": "100%",
+                "height": "160px",
+                "lineHeight": "160px",
+                "borderWidth": "2px",
+                "borderStyle": "dashed",
+                "borderRadius": "14px",
+                "textAlign": "center",
+                "background": "#111827",
+                "borderColor": "#38bdf8",
+                "cursor": "pointer",
+            },
+            multiple=False,
+        ),
 
-        {% if result %}
-            <div class="result">{{ result }}</div>
-            <p>{{ tips }}</p>
-        {% endif %}
-    </div>
-</body>
-</html>
-"""
+        html.Div(id="output", style={"marginTop": "30px"}),
+    ],
+)
 
-def check_password(password):
-    score = 0
+@app.callback(
+    Output("output", "children"),
+    Input("upload", "contents"),
+    State("upload", "filename"),
+)
+def process_file(contents, filename):
+    if contents is None:
+        return html.Div("No file uploaded yet.")
 
-    if len(password) >= 8:
-        score += 1
-    if re.search(r"[A-Z]", password):
-        score += 1
-    if re.search(r"[a-z]", password):
-        score += 1
-    if re.search(r"[0-9]", password):
-        score += 1
-    if re.search(r"[^A-Za-z0-9]", password):
-        score += 1
+    try:
+        content_type, content_string = contents.split(",")
+        decoded = base64.b64decode(content_string)
 
-    if score <= 2:
-        return "Weak ❌", "Use uppercase, lowercase, numbers, symbols, and at least 8 characters."
-    elif score == 3 or score == 4:
-        return "Medium ⚠️", "Good, but add more length or special characters."
-    else:
-        return "Strong ✅", "Great password structure."
+        if filename.endswith(".csv"):
+            df = pd.read_csv(io.StringIO(decoded.decode("utf-8")))
+        else:
+            return html.Div("Only CSV files are supported right now.", style={"color": "#f87171"})
 
-@app.route("/", methods=["GET", "POST"])
-def home():
-    result = None
-    tips = None
+        rows, cols = df.shape
 
-    if request.method == "POST":
-        password = request.form.get("password", "")
-        result, tips = check_password(password)
+        return html.Div([
+            html.H2("✅ Pipeline Completed"),
 
-    return render_template_string(HTML, result=result, tips=tips)
+            html.Div([
+                html.P("1. File received ✅"),
+                html.P("2. CSV schema detected ✅"),
+                html.P(f"3. Rows detected: {rows} ✅"),
+                html.P(f"4. Columns detected: {cols} ✅"),
+                html.P("5. File ready for processing ✅"),
+            ], style={
+                "background": "#111827",
+                "padding": "20px",
+                "borderRadius": "12px",
+                "marginBottom": "20px",
+            }),
+
+            html.H3("Preview"),
+            html.Table(
+                [
+                    html.Tr([html.Th(col) for col in df.columns])
+                ] + [
+                    html.Tr([html.Td(str(df.iloc[i][col])) for col in df.columns])
+                    for i in range(min(5, len(df)))
+                ],
+                style={
+                    "width": "100%",
+                    "background": "#111827",
+                    "borderCollapse": "collapse",
+                },
+            ),
+        ])
+
+    except Exception as e:
+        return html.Div(f"Error processing file: {e}", style={"color": "#f87171"})
+
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=8080)
+    app.run(debug=True, host="0.0.0.0", port=8050)

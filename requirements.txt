@@ -8,3 +8,7 @@ pandas
 flask
 pyyaml
 gunicorn
+
+dash
+pandas
+gunicorn
