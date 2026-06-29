@@ -1,112 +1,120 @@
-import streamlit as st
+from dash import Dash, html, dcc, Input, Output
 import random
-import time
 
-st.set_page_config(page_title="Duck Dash", page_icon="🦆", layout="wide")
+app = Dash(__name__)
+server = app.server
 
-st.markdown("""
-<style>
-.stApp {
-    background: linear-gradient(180deg, #87CEEB 0%, #B7F08A 100%);
+moods = {
+    "Happy": {
+        "emoji": "😄",
+        "color": "#FFD93D",
+        "songs": ["Happy - Pharrell Williams", "Can't Stop the Feeling", "Uptown Funk"],
+        "activity": "Go for a walk, call a friend, or dance for 5 minutes."
+    },
+    "Sad": {
+        "emoji": "😔",
+        "color": "#74B9FF",
+        "songs": ["Fix You - Coldplay", "Someone Like You", "Let Her Go"],
+        "activity": "Write your thoughts, drink water, and take a slow walk."
+    },
+    "Focused": {
+        "emoji": "🎯",
+        "color": "#55EFC4",
+        "songs": ["Lo-fi Beats", "Deep Focus", "Coding Mode"],
+        "activity": "Start a 25-minute focus timer and avoid distractions."
+    },
+    "Angry": {
+        "emoji": "😤",
+        "color": "#FF7675",
+        "songs": ["Believer - Imagine Dragons", "Numb - Linkin Park", "Stronger"],
+        "activity": "Take 10 deep breaths and do a quick workout."
+    },
+    "Relaxed": {
+        "emoji": "🌙",
+        "color": "#A29BFE",
+        "songs": ["Weightless", "Calm Piano", "Ocean Sounds"],
+        "activity": "Stretch, breathe slowly, and relax your shoulders."
+    }
 }
-.game-title {
-    text-align: center;
-    font-size: 55px;
-    font-weight: 900;
-    color: #ff6b00;
-    text-shadow: 3px 3px #fff;
-}
-.duck-box {
-    background: rgba(255,255,255,0.35);
-    border: 4px solid white;
-    border-radius: 25px;
-    padding: 30px;
-    min-height: 420px;
-}
-.score-card {
-    background: white;
-    border-radius: 20px;
-    padding: 20px;
-    text-align: center;
-    font-size: 25px;
-    font-weight: bold;
-}
-button {
-    font-size: 30px !important;
-    border-radius: 20px !important;
-}
-</style>
-""", unsafe_allow_html=True)
 
-st.markdown('<div class="game-title">🦆 Duck Dash</div>', unsafe_allow_html=True)
-st.caption("Click the duck before it flies away!")
+app.layout = html.Div(
+    style={
+        "minHeight": "100vh",
+        "padding": "40px",
+        "fontFamily": "Arial",
+        "background": "linear-gradient(135deg, #141E30, #243B55)",
+        "color": "white",
+        "textAlign": "center",
+    },
+    children=[
+        html.H1("🎧 Mood Music Recommender", style={"fontSize": "48px"}),
+        html.P("Pick your mood and get music + activity suggestions instantly."),
 
-if "score" not in st.session_state:
-    st.session_state.score = 0
-if "misses" not in st.session_state:
-    st.session_state.misses = 0
-if "round" not in st.session_state:
-    st.session_state.round = 1
-if "duck_pos" not in st.session_state:
-    st.session_state.duck_pos = random.randint(0, 8)
+        html.Div(
+            style={
+                "maxWidth": "500px",
+                "margin": "30px auto",
+                "background": "rgba(255,255,255,0.12)",
+                "padding": "25px",
+                "borderRadius": "20px",
+            },
+            children=[
+                dcc.Dropdown(
+                    id="mood",
+                    options=[{"label": f"{v['emoji']} {k}", "value": k} for k, v in moods.items()],
+                    value="Happy",
+                    clearable=False,
+                    style={"color": "black"},
+                ),
+                html.Br(),
+                html.Button(
+                    "Generate Recommendation",
+                    id="btn",
+                    n_clicks=0,
+                    style={
+                        "padding": "12px 25px",
+                        "border": "none",
+                        "borderRadius": "12px",
+                        "fontSize": "16px",
+                        "fontWeight": "bold",
+                        "cursor": "pointer",
+                    },
+                ),
+            ],
+        ),
 
-left, mid, right = st.columns(3)
+        html.Div(id="result"),
+    ],
+)
 
-with left:
-    st.markdown(f'<div class="score-card">🎯 Score<br>{st.session_state.score}</div>', unsafe_allow_html=True)
+@app.callback(
+    Output("result", "children"),
+    Input("btn", "n_clicks"),
+    Input("mood", "value"),
+)
+def recommend(n_clicks, mood):
+    data = moods[mood]
+    song = random.choice(data["songs"])
 
-with mid:
-    st.markdown(f'<div class="score-card">🔥 Round<br>{st.session_state.round}</div>', unsafe_allow_html=True)
+    return html.Div(
+        style={
+            "maxWidth": "650px",
+            "margin": "30px auto",
+            "padding": "30px",
+            "borderRadius": "25px",
+            "background": data["color"],
+            "color": "#111",
+            "boxShadow": "0 15px 40px rgba(0,0,0,0.35)",
+        },
+        children=[
+            html.H1(data["emoji"], style={"fontSize": "70px", "margin": "0"}),
+            html.H2(f"Your mood: {mood}"),
+            html.H3("🎵 Recommended Song"),
+            html.P(song, style={"fontSize": "22px", "fontWeight": "bold"}),
+            html.H3("✨ Suggested Activity"),
+            html.P(data["activity"], style={"fontSize": "18px"}),
+        ],
+    )
 
-with right:
-    st.markdown(f'<div class="score-card">❌ Misses<br>{st.session_state.misses}/5</div>', unsafe_allow_html=True)
-
-st.write("")
-
-if st.session_state.misses >= 5:
-    st.error("Game Over! The ducks escaped.")
-    st.balloons()
-
-    if st.button("🔁 Restart Game", use_container_width=True):
-        st.session_state.score = 0
-        st.session_state.misses = 0
-        st.session_state.round = 1
-        st.session_state.duck_pos = random.randint(0, 8)
-        st.rerun()
-
-    st.stop()
-
-st.markdown('<div class="duck-box">', unsafe_allow_html=True)
-
-positions = st.columns(3)
-
-cell = 0
-for row in range(3):
-    cols = st.columns(3)
-    for col in range(3):
-        with cols[col]:
-            if cell == st.session_state.duck_pos:
-                if st.button("🦆", key=f"duck_{cell}", use_container_width=True):
-                    st.session_state.score += 10
-                    st.session_state.round += 1
-                    st.session_state.duck_pos = random.randint(0, 8)
-                    st.success("Hit! Nice shot 🎯")
-                    time.sleep(0.3)
-                    st.rerun()
-            else:
-                if st.button("🌿", key=f"grass_{cell}", use_container_width=True):
-                    st.session_state.misses += 1
-                    st.warning("Missed!")
-                    time.sleep(0.3)
-                    st.rerun()
-        cell += 1
-
-st.markdown('</div>', unsafe_allow_html=True)
-
-st.write("")
-
-if st.button("Duck escaped! Next round 🦆", use_container_width=True):
-    st.session_state.misses += 1
-    st.session_state.round += 1
-    st.session_state.duck_pos = random.randint(0, 8)
-    st.rerun()
+if __name__ == "__main__":
+    app.run(debug=True, host="0.0.0.0", port=8050)
